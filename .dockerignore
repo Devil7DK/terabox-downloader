@@ -1,0 +1,12 @@
+.vscode
+downloads
+logs
+node_modules
+.dockerignore
+.gitignore
+.env
+.prettierrc.json
+BotLogout.js
+database.db
+Dockerfile
+yarn-error.log
