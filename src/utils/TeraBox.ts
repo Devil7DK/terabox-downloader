@@ -235,12 +235,10 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
             500,
             ({ loaded, total, rate, estimated }: AxiosProgressEvent) => {
                 let progress = total
-                    ? `${round(((loaded * 100) / total) * 100, 2).toFixed(
+                    ? `${round((loaded / total) * 100, 2).toFixed(
                           2
-                      )}% (${formatBytes(loaded * 100)} / ${formatBytes(
-                          total
-                      )})`
-                    : formatBytes(loaded * 100);
+                      )}% (${formatBytes(loaded)} / ${formatBytes(total)})`
+                    : formatBytes(loaded);
 
                 if (rate) {
                     progress += ` ${formatBytes(rate)}/s`;
@@ -278,7 +276,7 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
             }
         });
 
-        logger.info(`Startind download for url ${url.toString()}`, {
+        logger.info(`Starting download for url ${url.toString()}`, {
             action: 'onDownload',
             downloadUrl,
             job,
