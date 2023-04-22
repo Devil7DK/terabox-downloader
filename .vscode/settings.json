@@ -4,6 +4,5 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": true
   },
-  "exportall.config.relExclusion": ["/src/entities/BaseEntity.ts"],
-  "exportall.config.folderListener": ["/src/entities", "/src/bot", "/src/utils"]
+  "exportall.config.relExclusion": ["/src/entities/BaseEntity.ts"]
 }
