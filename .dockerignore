@@ -7,6 +7,7 @@ node_modules
 .env
 .prettierrc.json
 BotLogout.js
+cookie.txt
 database.db
 Dockerfile
 yarn-error.log

@@ -1,11 +1,14 @@
-import Axios, { AxiosProgressEvent } from 'axios';
+import FileCookieStore from '@root/file-cookie-store';
+import Axios, { AxiosProgressEvent, CreateAxiosDefaults } from 'axios';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import qs from 'qs';
 import { MessageEntity } from 'typegram';
 
+import { wrapper } from 'axios-cookiejar-support';
 import humanizeDuration from 'humanize-duration';
 import { throttle } from 'throttle-debounce';
+import { CookieJar } from 'tough-cookie';
 import { logger } from '../Logger.js';
 import { store } from '../Store.js';
 import { JobEntity } from '../entities/JobEntity.js';
@@ -27,16 +30,28 @@ const dpLogId = process.env.TERABOX_DP_LOGID || '';
 const jsToken = process.env.TERABOX_JS_TOKEN || '';
 const appId = process.env.TERABOX_APPID || '';
 
-const axios = Axios.create({
-    headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
-    },
-});
+const cookies_store = new FileCookieStore(
+    process.env.TERABOX_COOKIES_TXT || join(process.cwd(), 'cookie.txt'),
+    {
+        auto_sync: false,
+        lockfile: true,
+    }
+);
+const jar = new CookieJar(cookies_store);
+
+const axios = wrapper(
+    Axios.create({
+        headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+        },
+        jar,
+    } as CreateAxiosDefaults<any>)
+);
 
 const downloadsPath = join(process.cwd(), 'downloads');
 

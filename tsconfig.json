@@ -12,5 +12,9 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["./src"]
+  "include": ["./src", "./custom.d.ts"],
+  "ts-node": {
+    "files": true
+  },
+  "files": ["src/index.ts", "./custom.d.ts"]
 }
