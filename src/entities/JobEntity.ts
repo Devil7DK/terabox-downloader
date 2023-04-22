@@ -7,6 +7,7 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import { rmSync } from 'fs';
 import { logger } from '../Logger.js';
 import { store } from '../Store.js';
 import { DownloadedFile } from '../types/index.js';
@@ -117,7 +118,7 @@ export class JobEntity extends BaseEntity {
                         { reply_to_message_id: this.messageId }
                     )
                     .then(() => {
-                        logger.debug(
+                        logger.info(
                             `Successfully sent ${
                                 this.downloadedFiles?.length || 0
                             }!`,
@@ -128,6 +129,19 @@ export class JobEntity extends BaseEntity {
                                 messageId: this.messageId,
                             }
                         );
+
+                        try {
+                            if (this.downloadedFiles) {
+                                for (const file of this.downloadedFiles) {
+                                    rmSync(file.filePath);
+                                }
+                            }
+                        } catch (error) {
+                            logger.error('Failed to remove uploaded files!', {
+                                action: 'onJobUpdate',
+                                error,
+                            });
+                        }
                     })
                     .catch((error) => {
                         logger.error(
