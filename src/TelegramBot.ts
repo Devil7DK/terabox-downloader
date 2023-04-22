@@ -1,5 +1,6 @@
 import { Telegraf } from 'telegraf';
 
+import { existsSync, readFileSync } from 'fs';
 import { logger } from './Logger.js';
 import { store } from './Store.js';
 import * as middlewares from './bot/index.js';
@@ -53,14 +54,37 @@ export async function setupBot() {
         }
     }
 
-    await bot.launch(
-        process.env.NODE_ENV === 'production' && process.env.BOT_WEBHOOK_DOMAIN
-            ? {
-                  webhook: {
-                      domain: process.env.BOT_WEBHOOK_DOMAIN,
-                      port: 80,
-                  },
-              }
-            : {}
-    );
+    const launchOptions: Telegraf.LaunchOptions = {};
+
+    if (
+        process.env.NODE_ENV === 'production' &&
+        process.env.BOT_WEBHOOK_DOMAIN
+    ) {
+        launchOptions.webhook = {
+            domain: process.env.BOT_WEBHOOK_DOMAIN,
+            port: Number(process.env.BOT_WEBHOOK_PORT) || 80,
+        };
+
+        if (
+            process.env.BOT_WEBHOOK_CERTIFICATE &&
+            existsSync(process.env.BOT_WEBHOOK_CERTIFICATE) &&
+            process.env.BOT_WEBHOOK_KEY &&
+            existsSync(process.env.BOT_WEBHOOK_KEY)
+        ) {
+            logger.debug('Found CA certificate for webhook!', {
+                action: 'onInit',
+            });
+
+            launchOptions.webhook.certificate = {
+                source: readFileSync(process.env.BOT_WEBHOOK_CERTIFICATE),
+            };
+
+            launchOptions.webhook.tlsOptions = {
+                cert: readFileSync(process.env.BOT_WEBHOOK_CERTIFICATE),
+                key: readFileSync(process.env.BOT_WEBHOOK_KEY),
+            };
+        }
+    }
+
+    await bot.launch(launchOptions);
 }
