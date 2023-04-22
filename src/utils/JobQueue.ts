@@ -7,7 +7,10 @@ import { downloadFiles } from './TeraBox.js';
 
 const JobRepository = AppDataSource.getRepository(JobEntity);
 
-const queue = new Queue({ concurrency: 1, autostart: true });
+const queue = new Queue({
+    concurrency: Number(process.env.JOB_CONCURRENCY) || 1,
+    autostart: true,
+});
 
 export async function scheduleExistingJobs(): Promise<void> {
     const existingJobs = await JobRepository.find({
