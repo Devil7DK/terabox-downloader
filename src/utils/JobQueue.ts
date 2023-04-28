@@ -1,15 +1,61 @@
 import Queue from 'queue';
 
 import { AppDataSource } from '../AppDataSource.js';
-import { JobEntity } from '../entities/index.js';
 import { logger } from '../Logger.js';
+import { JobEntity } from '../entities/index.js';
+import { JobWorker } from '../types/JobWorker.js';
 import { downloadFiles } from './TeraBox.js';
 
 const JobRepository = AppDataSource.getRepository(JobEntity);
 
 const queue = new Queue({
     concurrency: Number(process.env.JOB_CONCURRENCY) || 1,
+    timeout: 20 * 60 * 1000,
     autostart: true,
+});
+
+queue.addEventListener('start', (e) => {
+    const worker = e.detail.job as JobWorker;
+
+    logger.info('Job started!', {
+        action: 'onQueueEvent',
+        job: worker.job,
+    });
+});
+
+queue.addEventListener('success', (e) => {
+    const result = e.detail.result;
+
+    logger.info('Job success!', {
+        action: 'onQueueEvent',
+        result,
+    });
+});
+
+queue.addEventListener('error', (e) => {
+    const error = e.detail.error;
+    const worker = e.detail.job as JobWorker;
+
+    logger.error('Job failed with error!', {
+        action: 'onQueueEvent',
+        error,
+        job: worker.job,
+    });
+});
+
+queue.addEventListener('end', (e) => {
+    const error = e.detail.error;
+
+    if (error) {
+        logger.error('Job ended with error!', {
+            action: 'onQueueEvent',
+            error,
+        });
+    } else {
+        logger.info('Job ended', {
+            action: 'onQueueEvent',
+        });
+    }
 });
 
 export async function scheduleExistingJobs(): Promise<void> {
@@ -31,7 +77,7 @@ export async function scheduleExistingJobs(): Promise<void> {
 }
 
 export function scheduleJob(job: JobEntity) {
-    queue.push(async () => {
+    const worker: JobWorker = async () => {
         logger.info(`Running job ${job.id}...`, {
             action: 'onJob',
             job: job,
@@ -74,5 +120,9 @@ export function scheduleJob(job: JobEntity) {
                 });
             }
         }
-    });
+    };
+
+    worker.job = job;
+
+    queue.push(worker);
 }
