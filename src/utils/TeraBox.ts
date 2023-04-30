@@ -285,12 +285,24 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
                         })} remaining`;
                     }
 
-                    store.bot?.telegram.editMessageText(
+                    store.bot?.telegram
+                        .editMessageText(
                         job.chatId,
                         job.statusMessageId,
                         undefined,
                         `URL: ${job.url}\nStatus: ${job.status}\nProgress: ${progress}`
+                        )
+                        .catch((error) => {
+                            logger.error(
+                                `Failed to update message ${job.statusMessageId} for download progress!`,
+                                {
+                                    action: 'onDownload',
+                                    file,
+                                    job,
+                                    error,
+                                }
                     );
+                        });
                 }
             );
 
