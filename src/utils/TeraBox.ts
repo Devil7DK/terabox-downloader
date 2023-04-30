@@ -266,7 +266,7 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
             });
         } else {
             const reportProgress = throttle(
-                500,
+                1000,
                 ({ loaded, total, rate, estimated }: AxiosProgressEvent) => {
                     let progress = total
                         ? `${round((loaded / total) * 100, 2).toFixed(
@@ -287,10 +287,10 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
 
                     store.bot?.telegram
                         .editMessageText(
-                        job.chatId,
-                        job.statusMessageId,
-                        undefined,
-                        `URL: ${job.url}\nStatus: ${job.status}\nProgress: ${progress}`
+                            job.chatId,
+                            job.statusMessageId,
+                            undefined,
+                            `URL: ${job.url}\nStatus: ${job.status}\nProgress: ${progress}`
                         )
                         .catch((error) => {
                             logger.error(
@@ -301,7 +301,7 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
                                     job,
                                     error,
                                 }
-                    );
+                            );
                         });
                 }
             );
