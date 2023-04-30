@@ -136,6 +136,39 @@ export class JobEntity extends BaseEntity {
                                     rmSync(file.filePath);
                                 }
                             }
+
+                            store.bot?.telegram
+                                .deleteMessage(
+                                    this.chatId,
+                                    this.statusMessageId
+                                )
+                                .then(() =>
+                                    logger.debug(
+                                        `Deleted status message for ${this.url}`,
+                                        {
+                                            action: 'onJobUpdate',
+                                            it: this.id,
+                                            chatId: this.chatId,
+                                            messageId: this.messageId,
+                                            statusMessageId:
+                                                this.statusMessageId,
+                                        }
+                                    )
+                                )
+                                .catch((error) => {
+                                    logger.error(
+                                        `Failed to delete status message for ${this.url}`,
+                                        {
+                                            action: 'onJobUpdate',
+                                            it: this.id,
+                                            chatId: this.chatId,
+                                            messageId: this.messageId,
+                                            statusMessageId:
+                                                this.statusMessageId,
+                                            error,
+                                        }
+                                    );
+                                });
                         } catch (error) {
                             logger.error('Failed to remove uploaded files!', {
                                 action: 'onJobUpdate',
