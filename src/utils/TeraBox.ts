@@ -189,9 +189,18 @@ async function getDownloadURL(
     logger.debug(`Fetched download URL for ${info.fs_id}`, {
         action: 'onDownload',
         info,
+        dlink: response.data.dlink,
     });
 
     const dlink = response.data.dlink as string;
+
+    if (dlink.startsWith('https://d.terabox.com/file')) {
+        logger.info(`Got download url directly for ${info.fs_id}`, {
+            action: 'onDownload',
+            info,
+        });
+        return dlink;
+    }
 
     const linkResponse = await axios.get(dlink, {
         validateStatus: function (status) {
