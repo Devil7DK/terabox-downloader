@@ -6,6 +6,7 @@ COMMIT_ID=$(git log --format="%H" -n 1)
 DATE=$(date +%Y%m%d)
 
 REPOSITORY="${HOSTNAME}/${PROJECT}/${IMAGE}"
-TAG="${DATE}-${COMMIT_ID}"
+TAG="${REPOSITORY}:latest"
 
-docker build . -t "${REPOSITORY}:${TAG}"
+docker build . -t "${TAG}"
+docker push "${TAG}"
