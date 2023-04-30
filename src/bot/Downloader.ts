@@ -49,10 +49,6 @@ export function setupDownloader(bot: Telegraf) {
 
         if (urls.length) {
             try {
-                const reply = await ctx.reply(`Found ${urls.length} URLs!`, {
-                    reply_to_message_id: ctx.message.message_id,
-                });
-
                 const message = await MessageRepository.create({
                     chatId: ctx.chat.id,
                     messageId: ctx.message.message_id,
@@ -65,12 +61,7 @@ export function setupDownloader(bot: Telegraf) {
                             messageId: ctx.message.message_id,
                             error,
                         });
-                        ctx.telegram.editMessageText(
-                            ctx.chat.id,
-                            reply.message_id,
-                            undefined,
-                            'Failed to save message metadata!'
-                        );
+                        ctx.reply('Failed to save message metadata!');
                         throw error;
                     });
 
