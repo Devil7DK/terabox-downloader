@@ -1,6 +1,6 @@
 import FileCookieStore from '@root/file-cookie-store';
 import Axios, { AxiosProgressEvent, CreateAxiosDefaults } from 'axios';
-import { createWriteStream, existsSync, mkdirSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
 import qs from 'qs';
 import { MessageEntity } from 'typegram';
@@ -255,96 +255,107 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
 
         const filePath = join(downloadsPath, file.fs_id);
 
-        const reportProgress = throttle(
-            500,
-            ({ loaded, total, rate, estimated }: AxiosProgressEvent) => {
-                let progress = total
-                    ? `${round((loaded / total) * 100, 2).toFixed(
-                          2
-                      )}% (${formatBytes(loaded)} / ${formatBytes(total)})`
-                    : formatBytes(loaded);
-
-                if (rate) {
-                    progress += ` ${formatBytes(rate)}/s`;
-                }
-
-                if (estimated) {
-                    progress += ` ${humanizeDuration(estimated * 1000, {
-                        units: ['h', 'm', 's'],
-                        maxDecimalPoints: 0,
-                    })} remaining`;
-                }
-
-                store.bot?.telegram.editMessageText(
-                    job.chatId,
-                    job.statusMessageId,
-                    undefined,
-                    `URL: ${job.url}\nStatus: ${job.status}\nProgress: ${progress}`
-                );
-            }
-        );
-
-        const status = { completed: false };
-        const abortController = new AbortController();
-
-        process.once('SIGINT', () => {
-            if (!status.completed) {
-                status.completed = true;
-                abortController.abort();
-            }
-        });
-        process.once('SIGTERM', () => {
-            if (!status.completed) {
-                status.completed = true;
-                abortController.abort();
-            }
-        });
-
-        logger.info(`Starting download for url ${url.toString()}`, {
-            action: 'onDownload',
-            downloadUrl,
-            job,
-        });
-        const writer = createWriteStream(filePath);
-        await axios
-            .get(downloadUrl, {
-                responseType: 'stream',
-                onDownloadProgress: reportProgress,
-                signal: abortController.signal,
-            })
-            .then((response) => {
-                return new Promise<boolean>((resolve, reject) => {
-                    response.data.pipe(writer);
-
-                    let error: Error | null = null;
-
-                    writer.on('error', (err) => {
-                        error = err;
-                        writer.close();
-                        reject(err);
-                    });
-
-                    writer.on('close', () => {
-                        if (!error) {
-                            resolve(true);
-                        }
-                    });
-                });
-            })
-            .catch((error) => {
-                logger.error('Failed to download file!', {
-                    url,
-                    shareInfo,
-                    file,
-                    downloadUrl,
-                    error,
-                });
-
-                throw new Error('Failed to download file!');
-            })
-            .finally(() => {
-                status.completed = true;
+        if (
+            existsSync(filePath) &&
+            statSync(filePath).size >= Number(file.size)
+        ) {
+            logger.info(`File ${file.fs_id} is already downloaded for ${url}`, {
+                action: 'onDownload',
+                file,
+                url,
             });
+        } else {
+            const reportProgress = throttle(
+                500,
+                ({ loaded, total, rate, estimated }: AxiosProgressEvent) => {
+                    let progress = total
+                        ? `${round((loaded / total) * 100, 2).toFixed(
+                              2
+                          )}% (${formatBytes(loaded)} / ${formatBytes(total)})`
+                        : formatBytes(loaded);
+
+                    if (rate) {
+                        progress += ` ${formatBytes(rate)}/s`;
+                    }
+
+                    if (estimated) {
+                        progress += ` ${humanizeDuration(estimated * 1000, {
+                            units: ['h', 'm', 's'],
+                            maxDecimalPoints: 0,
+                        })} remaining`;
+                    }
+
+                    store.bot?.telegram.editMessageText(
+                        job.chatId,
+                        job.statusMessageId,
+                        undefined,
+                        `URL: ${job.url}\nStatus: ${job.status}\nProgress: ${progress}`
+                    );
+                }
+            );
+
+            const status = { completed: false };
+            const abortController = new AbortController();
+
+            process.once('SIGINT', () => {
+                if (!status.completed) {
+                    status.completed = true;
+                    abortController.abort();
+                }
+            });
+            process.once('SIGTERM', () => {
+                if (!status.completed) {
+                    status.completed = true;
+                    abortController.abort();
+                }
+            });
+
+            logger.info(`Starting download for url ${url.toString()}`, {
+                action: 'onDownload',
+                downloadUrl,
+                job,
+            });
+            const writer = createWriteStream(filePath);
+            await axios
+                .get(downloadUrl, {
+                    responseType: 'stream',
+                    onDownloadProgress: reportProgress,
+                    signal: abortController.signal,
+                })
+                .then((response) => {
+                    return new Promise<boolean>((resolve, reject) => {
+                        response.data.pipe(writer);
+
+                        let error: Error | null = null;
+
+                        writer.on('error', (err) => {
+                            error = err;
+                            writer.close();
+                            reject(err);
+                        });
+
+                        writer.on('close', () => {
+                            if (!error) {
+                                resolve(true);
+                            }
+                        });
+                    });
+                })
+                .catch((error) => {
+                    logger.error('Failed to download file!', {
+                        url,
+                        shareInfo,
+                        file,
+                        downloadUrl,
+                        error,
+                    });
+
+                    throw new Error('Failed to download file!');
+                })
+                .finally(() => {
+                    status.completed = true;
+                });
+        }
 
         files.push({ filePath, fileName: file.filename });
     }
