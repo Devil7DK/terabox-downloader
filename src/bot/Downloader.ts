@@ -34,6 +34,7 @@ export function setupDownloader(bot: Telegraf) {
                 action: 'onMessage',
                 chatId: ctx.chat.id,
                 messageId: ctx.message.message_id,
+                messageObj: ctx.message,
             });
             ctx.reply('Failed to handle message!', {
                 reply_to_message_id: ctx.message.message_id,
