@@ -13,7 +13,7 @@ export function setupDownloader(bot: Telegraf) {
         let urls: string[] = [];
 
         if (
-            'photo' in ctx.message &&
+            ('photo' in ctx.message || 'video' in ctx.message) &&
             ctx.message.caption &&
             ctx.message.caption_entities
         ) {
