@@ -190,9 +190,20 @@ async function getDownloadURL(
         action: 'onDownload',
         info,
         dlink: response.data.dlink,
+        response: response.data,
     });
 
     const dlink = response.data.dlink as string;
+
+    if (!dlink) {
+        logger.debug(`Failed to get download url for ${info.fs_id}`, {
+            action: 'onDownload',
+            info,
+            response: response.data,
+        });
+
+        throw new Error('Failed to get download url');
+    }
 
     if (dlink.startsWith('https://d.terabox.com/file')) {
         logger.info(`Got download url directly for ${info.fs_id}`, {
