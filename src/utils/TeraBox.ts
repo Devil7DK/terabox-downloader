@@ -1,14 +1,11 @@
-import FileCookieStore from '@root/file-cookie-store';
 import Axios, { AxiosProgressEvent, CreateAxiosDefaults } from 'axios';
 import { createWriteStream, existsSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
-import qs from 'qs';
 import { MessageEntity } from 'typegram';
 
 import { wrapper } from 'axios-cookiejar-support';
 import humanizeDuration from 'humanize-duration';
 import { throttle } from 'throttle-debounce';
-import { CookieJar } from 'tough-cookie';
 import { logger } from '../Logger.js';
 import { store } from '../Store.js';
 import { JobEntity } from '../entities/JobEntity.js';
@@ -26,19 +23,6 @@ const allowedHosts = [
     'teraboxapp.com',
 ];
 
-const dpLogId = process.env.TERABOX_DP_LOGID || '';
-const jsToken = process.env.TERABOX_JS_TOKEN || '';
-const appId = process.env.TERABOX_APPID || '';
-
-const cookies_store = new FileCookieStore(
-    process.env.TERABOX_COOKIES_TXT || join(process.cwd(), 'cookie.txt'),
-    {
-        auto_sync: false,
-        lockfile: true,
-    }
-);
-const jar = new CookieJar(cookies_store);
-
 const axios = wrapper(
     Axios.create({
         headers: {
@@ -49,7 +33,6 @@ const axios = wrapper(
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-origin',
         },
-        jar,
     } as CreateAxiosDefaults<any>)
 );
 
@@ -131,12 +114,10 @@ async function getShareInfo(url: URL): Promise<TeraBoxShareInfo> {
     });
 
     const response = await axios.get(
-        `https://www.terabox.com/api/shorturlinfo?app_id=${appId}&web=1&channel=dubox&clienttype=0&jsToken=${jsToken}&dp-logid=${dpLogId}&shorturl=${shareCode}&root=1`,
+        `https://terabox-dl.qtcloud.workers.dev/api/get-info?shorturl=${shareCode}&pwd=`,
         {
             headers: {
-                Referer: `https://www.terabox.com/sharing/link?surl=${shareCode.slice(
-                    1
-                )}`,
+                Referer: 'https://terabox-dl.qtcloud.workers.dev/',
             },
         }
     );
@@ -147,15 +128,12 @@ async function getShareInfo(url: URL): Promise<TeraBoxShareInfo> {
     });
 
     return {
+        ok: response.data.ok,
         shareId: response.data.shareid,
         uk: response.data.uk,
         sign: response.data.sign,
         timestamp: response.data.timestamp,
-        list: response.data.list.map((fid: Record<string, string>) => ({
-            fs_id: fid.fs_id,
-            filename: fid.server_filename,
-            size: fid.size,
-        })),
+        list: response.data.list,
     };
 }
 
@@ -167,33 +145,23 @@ async function getDownloadURL(
         info,
     });
     const response = await axios.post(
-        `https://www.terabox.com/share/download` +
-            `?app_id=${appId}` +
-            `&web=1` +
-            `&channel=dubox` +
-            `&clienttype=0` +
-            `&jsToken=${jsToken}` +
-            `&dp-logid=${dpLogId}` +
-            `&shareid=${info.shareId}` +
-            `&sign=${info.sign}` +
-            `&timestamp=${info.timestamp}`,
-        qs.stringify({
-            product: 'share',
-            nozip: 0,
-            fid_list: `[${info.fs_id}]`,
+        'https://terabox-dl.qtcloud.workers.dev/api/get-download',
+        {
+            shareid: info.shareId,
             uk: info.uk,
-            primaryid: info.shareId,
-        }),
-        { headers: { 'content-type': 'application/x-www-form-urlencoded' } }
+            sign: info.sign,
+            timestamp: info.timestamp,
+            fs_id: info.fs_id,
+        }
     );
     logger.debug(`Fetched download URL for ${info.fs_id}`, {
         action: 'onDownload',
         info,
-        dlink: response.data.dlink,
+        dlink: response.data.downloadLink,
         response: response.data,
     });
 
-    const dlink = response.data.dlink as string;
+    const dlink = response.data.downloadLink as string;
 
     if (!dlink) {
         logger.debug(`Failed to get download url for ${info.fs_id}`, {
@@ -205,37 +173,7 @@ async function getDownloadURL(
         throw new Error('Failed to get download url');
     }
 
-    if (dlink.startsWith('https://d.terabox.com/file')) {
-        logger.info(`Got download url directly for ${info.fs_id}`, {
-            action: 'onDownload',
-            info,
-        });
-        return dlink;
-    }
-
-    const linkResponse = await axios.get(dlink, {
-        validateStatus: function (status) {
-            return status == 302 || (status >= 200 && status < 300);
-        },
-    });
-
-    if (linkResponse.status == 302) {
-        logger.info(`Got download url from redirection for ${info.fs_id}`, {
-            action: 'onDownload',
-            info,
-            headers: linkResponse.headers,
-        });
-        return linkResponse.headers.location;
-    } else if (response.data && response.data && response.data.dlink) {
-        logger.info(`Got download url from response for ${info.fs_id}`, {
-            action: 'onDownload',
-            info,
-            data: response.data,
-        });
-        return response.data.dlink;
-    } else {
-        throw new Error('Failed get url download');
-    }
+    return dlink;
 }
 
 export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
