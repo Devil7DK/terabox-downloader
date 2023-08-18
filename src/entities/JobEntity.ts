@@ -46,6 +46,9 @@ export class JobEntity extends BaseEntity {
     @Column()
     public messageEntityId!: string;
 
+    @Column({ default: 0 })
+    public retryCount!: number;
+
     @ManyToOne(() => ChatEntity)
     @JoinColumn({ name: 'chatId' })
     public chat?: ChatEntity;
@@ -63,12 +66,30 @@ export class JobEntity extends BaseEntity {
             messageId: this.messageId,
         });
         if (store.bot && this.statusMessageId) {
+            if (this.status === 'failed') {
+                this.retryCount++;
+            }
+
             store.bot.telegram
                 .editMessageText(
                     this.chatId,
                     this.statusMessageId,
                     undefined,
-                    `URL: ${this.url}\nStatus: ${this.status}`
+                    `URL: ${this.url}\nStatus: ${this.status}`,
+                    this.status === 'failed' && this.retryCount < 3
+                        ? {
+                              reply_markup: {
+                                  inline_keyboard: [
+                                      [
+                                          {
+                                              text: 'Retry',
+                                              callback_data: `retry:${this.id}`,
+                                          },
+                                      ],
+                                  ],
+                              },
+                          }
+                        : undefined
                 )
                 .then(() => {
                     logger.debug('Edited message for updating job status!', {

@@ -3,7 +3,7 @@ import { Telegraf } from 'telegraf';
 import { AppDataSource } from '../AppDataSource.js';
 import { logger } from '../Logger.js';
 import { JobEntity, MessageEntity } from '../entities/index.js';
-import { parseUrl, scheduleJob } from '../utils/index.js';
+import { ordinalSuffixOf, parseUrl, scheduleJob } from '../utils/index.js';
 
 const MessageRepository = AppDataSource.getRepository(MessageEntity);
 const JobRepository = AppDataSource.getRepository(JobEntity);
@@ -104,6 +104,51 @@ export function setupDownloader(bot: Telegraf) {
             ctx.reply('No URLs found!', {
                 reply_to_message_id: ctx.message.message_id,
             });
+        }
+    });
+
+    bot.action(/retry:(.+)/, async (ctx) => {
+        const jobId = ctx.match[1];
+
+        logger.debug('Received retry action!', {
+            action: 'onAction',
+            chatId: ctx.chat?.id,
+            jobId,
+        });
+
+        const job = await JobRepository.findOneBy({ id: jobId });
+
+        if (!job) {
+            logger.error('Failed to find job!', {
+                action: 'onAction',
+                chatId: ctx.chat?.id,
+                jobId,
+            });
+
+            ctx.answerCbQuery('Failed to find job!');
+        } else {
+            try {
+                job.status = 'queued';
+
+                await job.save();
+
+                scheduleJob(job);
+
+                ctx.answerCbQuery(
+                    `Retrying job for ${ordinalSuffixOf(
+                        job.retryCount
+                    )} time! Please wait...`
+                );
+            } catch (error) {
+                logger.error('Failed to update job!', {
+                    action: 'onAction',
+                    chatId: ctx.chat?.id,
+                    jobId,
+                    error,
+                });
+
+                ctx.answerCbQuery('Failed to update job!');
+            }
         }
     });
 }
