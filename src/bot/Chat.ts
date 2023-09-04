@@ -1,9 +1,11 @@
 import { Telegraf } from 'telegraf';
+import { LessThan } from 'typeorm';
 
 import { AppDataSource } from '../AppDataSource.js';
 import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
 import { ChatEntity, JobEntity } from '../entities/index.js';
+import { scheduleJob } from '../utils/JobQueue.js';
 
 const ChatRepository = AppDataSource.getRepository(ChatEntity);
 const JobRepository = AppDataSource.getRepository(JobEntity);
@@ -21,6 +23,15 @@ export function setupChat(bot: Telegraf) {
         {
             command: 'cleanup_completed',
             description: 'Cleanup completed jobs for this chat',
+        },
+        {
+            command: 'retry_failed',
+            description: 'Retry failed jobs for this chat',
+        },
+        {
+            command: 'retry_failed_all',
+            description:
+                'Retry all failed jobs for this chat (including those with maxed out retry count)',
         },
         {
             command: 'job_stats',
@@ -141,6 +152,77 @@ export function setupChat(bot: Telegraf) {
         });
 
         ctx.reply(`Cleanup result: ${result.affected} completed jobs deleted!`);
+    });
+
+    bot.command('retry_failed', async (ctx) => {
+        logger.debug('Received retry failed command!', {
+            action: 'onRetryFailedCommand',
+            chatId: ctx.chat.id,
+            messageId: ctx.message.message_id,
+        });
+
+        const jobs = await JobRepository.find({
+            where: {
+                chatId: ctx.chat.id,
+                status: 'failed',
+                retryCount: LessThan(Config.JOB_RETRY_COUNT),
+            },
+        });
+
+        for (const job of jobs) {
+            try {
+                job.status = 'queued';
+
+                const updatedJob = await job.save();
+
+                scheduleJob(updatedJob);
+            } catch (error) {
+                logger.error('Failed to re-queue job!', {
+                    action: 'onRetryFailedCommand',
+                    chatId: ctx.chat.id,
+                    messageId: ctx.message.message_id,
+                    job,
+                    error,
+                });
+            }
+        }
+
+        ctx.reply(`Retry result: ${jobs.length} failed jobs re-queued!`);
+    });
+
+    bot.command('retry_failed_all', async (ctx) => {
+        logger.debug('Received retry failed all command!', {
+            action: 'onRetryFailedCommand',
+            chatId: ctx.chat.id,
+            messageId: ctx.message.message_id,
+        });
+
+        const jobs = await JobRepository.find({
+            where: {
+                chatId: ctx.chat.id,
+                status: 'failed',
+            },
+        });
+
+        for (const job of jobs) {
+            try {
+                job.status = 'queued';
+
+                const updatedJob = await job.save();
+
+                scheduleJob(updatedJob);
+            } catch (error) {
+                logger.error('Failed to re-queue job!', {
+                    action: 'onRetryFailedCommand',
+                    chatId: ctx.chat.id,
+                    messageId: ctx.message.message_id,
+                    job,
+                    error,
+                });
+            }
+        }
+
+        ctx.reply(`Retry result: ${jobs.length} failed jobs re-queued!`);
     });
 
     bot.command('job_stats', async (ctx) => {
