@@ -1,8 +1,9 @@
 import { Telegraf } from 'telegraf';
 
 import { AppDataSource } from '../AppDataSource.js';
-import { ChatEntity, JobEntity } from '../entities/index.js';
+import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
+import { ChatEntity, JobEntity } from '../entities/index.js';
 
 const ChatRepository = AppDataSource.getRepository(ChatEntity);
 const JobRepository = AppDataSource.getRepository(JobEntity);
@@ -151,6 +152,10 @@ export function setupChat(bot: Telegraf) {
 
         const result = await JobRepository.createQueryBuilder('job')
             .select("SUM(job.status='queued')", 'queued')
+            .addSelect(
+                `SUM(job.status='failed' AND job.retryCount < ${Config.JOB_RETRY_COUNT})`,
+                'failed_with_retry'
+            )
             .addSelect("SUM(job.status='failed')", 'failed')
             .addSelect("SUM(job.status='completed')", 'completed')
             .addSelect("SUM(job.status='inprogress')", 'inprogress')
@@ -165,7 +170,7 @@ export function setupChat(bot: Telegraf) {
         });
 
         ctx.reply(
-            `Job stats for this chat:\n\nQueued: ${result.queued}\nIn progress: ${result.inprogress}\nCompleted: ${result.completed}\nFailed: ${result.failed}`
+            `Job stats for this chat:\n\nQueued: ${result.queued}\nIn progress: ${result.inprogress}\nCompleted: ${result.completed}\nFailed: ${result.failed}\nFailed with retry: ${result.failed_with_retry}`
         );
     });
 }
