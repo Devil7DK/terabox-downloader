@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 
 import { rmSync } from 'fs';
+import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
 import { store } from '../Store.js';
 import { DownloadedFile } from '../types/index.js';
@@ -75,8 +76,13 @@ export class JobEntity extends BaseEntity {
                     this.chatId,
                     this.statusMessageId,
                     undefined,
-                    `URL: ${this.url}\nStatus: ${this.status}`,
-                    this.status === 'failed' && this.retryCount < 3
+                    `URL: ${this.url}\nStatus: ${this.status}${
+                        this.status === 'failed'
+                            ? `\nRetry count: ${this.retryCount}`
+                            : ''
+                    }`,
+                    this.status === 'failed' &&
+                        this.retryCount < Config.JOB_RETRY_COUNT
                         ? {
                               reply_markup: {
                                   inline_keyboard: [

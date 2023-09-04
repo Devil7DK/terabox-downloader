@@ -47,4 +47,8 @@ export const Config = cleanEnv(process.env, {
         desc: 'Number of jobs to run concurrently',
         default: 1,
     }),
+    JOB_RETRY_COUNT: num({
+        desc: 'Number of times to retry a failed job',
+        default: 3,
+    }),
 });
