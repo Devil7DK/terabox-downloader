@@ -1,6 +1,7 @@
 import Queue from 'queue';
 
 import { AppDataSource } from '../AppDataSource.js';
+import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
 import { JobEntity } from '../entities/index.js';
 import { JobWorker } from '../types/JobWorker.js';
@@ -9,7 +10,7 @@ import { downloadFiles } from './TeraBox.js';
 const JobRepository = AppDataSource.getRepository(JobEntity);
 
 const queue = new Queue({
-    concurrency: Number(process.env.JOB_CONCURRENCY) || 1,
+    concurrency: Config.JOB_CONCURRENCY,
     timeout: 20 * 60 * 1000,
     autostart: true,
 });

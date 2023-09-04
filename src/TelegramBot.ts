@@ -1,24 +1,28 @@
+import { existsSync, readFileSync } from 'fs';
 import { Telegraf } from 'telegraf';
 
-import { existsSync, readFileSync } from 'fs';
+import { Config } from './Config.js';
 import { logger } from './Logger.js';
 import { store } from './Store.js';
 import * as middlewares from './bot/index.js';
 
 export async function setupBot() {
-    const token = process.env.BOT_TOKEN;
-    const onlyAllowed = process.env.BOT_ONLY_ALLOWED === 'true';
-    const allowedUsers = JSON.parse(
-        process.env.BOT_ALLOWED_USERS || '[]'
-    ) as string[];
+    const token = Config.BOT_TOKEN;
+    const onlyAllowed = Config.BOT_ONLY_ALLOWED;
+    const allowedUsers = Config.BOT_ALLOWED_USERS;
 
     if (!token) {
         throw new Error('Failed to launch bot! Invalid token!');
     }
 
-    const bot = (store.bot = new Telegraf(token, {
-        telegram: { apiRoot: process.env.BOT_API_SERVER },
-    }));
+    const bot = (store.bot = new Telegraf(
+        token,
+        Config.BOT_API_SERVER
+            ? {
+                  telegram: { apiRoot: Config.BOT_API_SERVER },
+              }
+            : undefined
+    ));
 
     logger.info('Launching bot!', { action: 'onInit' });
 
@@ -56,32 +60,29 @@ export async function setupBot() {
 
     const launchOptions: Telegraf.LaunchOptions = {};
 
-    if (
-        process.env.NODE_ENV === 'production' &&
-        process.env.BOT_WEBHOOK_DOMAIN
-    ) {
+    if (Config.isProduction && Config.BOT_WEBHOOK_DOMAIN) {
         launchOptions.webhook = {
-            domain: process.env.BOT_WEBHOOK_DOMAIN,
-            port: Number(process.env.BOT_WEBHOOK_PORT) || 80,
+            domain: Config.BOT_WEBHOOK_DOMAIN,
+            port: Config.BOT_WEBHOOK_PORT,
         };
 
         if (
-            process.env.BOT_WEBHOOK_CERTIFICATE &&
-            existsSync(process.env.BOT_WEBHOOK_CERTIFICATE) &&
-            process.env.BOT_WEBHOOK_KEY &&
-            existsSync(process.env.BOT_WEBHOOK_KEY)
+            Config.BOT_WEBHOOK_CERTIFICATE &&
+            existsSync(Config.BOT_WEBHOOK_CERTIFICATE) &&
+            Config.BOT_WEBHOOK_KEY &&
+            existsSync(Config.BOT_WEBHOOK_KEY)
         ) {
             logger.debug('Found CA certificate for webhook!', {
                 action: 'onInit',
             });
 
             launchOptions.webhook.certificate = {
-                source: readFileSync(process.env.BOT_WEBHOOK_CERTIFICATE),
+                source: readFileSync(Config.BOT_WEBHOOK_CERTIFICATE),
             };
 
             launchOptions.webhook.tlsOptions = {
-                cert: readFileSync(process.env.BOT_WEBHOOK_CERTIFICATE),
-                key: readFileSync(process.env.BOT_WEBHOOK_KEY),
+                cert: readFileSync(Config.BOT_WEBHOOK_CERTIFICATE),
+                key: readFileSync(Config.BOT_WEBHOOK_KEY),
             };
         }
     }

@@ -1,14 +1,13 @@
 import chalk from 'chalk';
+import { highlight } from 'cli-highlight';
 import { Logger } from 'typeorm';
 import winston from 'winston';
 import 'winston-daily-rotate-file';
 
-import { highlight } from 'cli-highlight';
+import { Config } from './Config.js';
 
 export const logger = winston.createLogger({
-    level:
-        process.env.LOG_LEVEL ||
-        (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+    level: Config.LOG_LEVEL,
     transports: [
         new winston.transports.Console({
             format: winston.format.combine(

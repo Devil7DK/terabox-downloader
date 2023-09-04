@@ -1,16 +1,18 @@
 import { join } from 'path';
 import { DataSource, DataSourceOptions } from 'typeorm';
 
-import * as entities from './entities/index.js';
+import { Config } from './Config.js';
 import { CutomTypeORMLogger } from './Logger.js';
+import * as entities from './entities/index.js';
 
-const config: DataSourceOptions = process.env.MYSQL_HOST
+const config: DataSourceOptions = Config.MYSQL_HOST
     ? {
           type: 'mysql',
-          host: process.env.MYSQL_HOST,
-          username: process.env.MYSQL_USERNAME,
-          password: process.env.MYSQL_PASSWORD,
-          database: process.env.MYSQL_DATABASE,
+          host: Config.MYSQL_HOST,
+          username: Config.MYSQL_USERNAME,
+          password: Config.MYSQL_PASSWORD,
+          database: Config.MYSQL_DATABASE,
+          port: Number(Config.MYSQL_PORT),
       }
     : { type: 'sqlite', database: join(process.cwd(), 'database.db') };
 
