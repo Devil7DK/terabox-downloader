@@ -24,8 +24,6 @@ export async function setupBot() {
             : undefined
     ));
 
-    logger.info('Launching bot!', { action: 'onInit' });
-
     process.once('SIGINT', () => bot.stop('SIGINT'));
     process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
@@ -86,6 +84,13 @@ export async function setupBot() {
             };
         }
     }
+
+    logger.debug('Configuring bot launch options', {
+        action: 'onInit',
+        launchOptions,
+    });
+
+    logger.info('Launching bot!', { action: 'onInit' });
 
     await bot.launch(launchOptions);
 }
