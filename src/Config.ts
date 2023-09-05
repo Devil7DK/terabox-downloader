@@ -4,6 +4,7 @@ import { bool, cleanEnv, json, num, str } from 'envalid';
 dotenv.config();
 
 export const Config = cleanEnv(process.env, {
+    NODE_ENV: str({ desc: 'Node environment', default: 'development' }),
     LOG_LEVEL: str({ desc: 'Log level', default: 'info', devDefault: 'debug' }),
 
     MYSQL_HOST: str({ desc: 'MySQL server host', default: '' }),
