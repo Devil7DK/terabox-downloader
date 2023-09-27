@@ -37,6 +37,10 @@ export function setupChat(bot: Telegraf) {
             command: 'job_stats',
             description: 'Get job stats for this chat',
         },
+        {
+            command: 'restart',
+            description: 'Restart the bot',
+        },
     ]);
 
     bot.start(async (ctx) => {
@@ -254,5 +258,19 @@ export function setupChat(bot: Telegraf) {
         ctx.reply(
             `Job stats for this chat:\n\nQueued: ${result.queued}\nIn progress: ${result.inprogress}\nCompleted: ${result.completed}\nFailed: ${result.failed}\nFailed with retry: ${result.failed_with_retry}`
         );
+    });
+
+    bot.command('restart', async (ctx) => {
+        logger.debug('Received restart command!', {
+            action: 'onRestartCommand',
+            chatId: ctx.chat.id,
+            messageId: ctx.message.message_id,
+        });
+
+        ctx.reply('Restarting...');
+
+        setTimeout(() => {
+            process.exit(-1);
+        }, 5000);
     });
 }
