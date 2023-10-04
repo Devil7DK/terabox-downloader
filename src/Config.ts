@@ -52,4 +52,8 @@ export const Config = cleanEnv(process.env, {
         desc: 'Number of times to retry a failed job',
         default: 3,
     }),
+    ENABLE_RESTART: bool({
+        desc: 'Enable restart command',
+        default: false,
+    }),
 });

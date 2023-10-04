@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { LessThan } from 'typeorm';
 
+import { BotCommand } from 'typegram';
 import { AppDataSource } from '../AppDataSource.js';
 import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
@@ -11,7 +12,7 @@ const ChatRepository = AppDataSource.getRepository(ChatEntity);
 const JobRepository = AppDataSource.getRepository(JobEntity);
 
 export function setupChat(bot: Telegraf) {
-    bot.telegram.setMyCommands([
+    const commands: BotCommand[] = [
         {
             command: 'cleanup_all',
             description: 'Cleanup all jobs for this chat',
@@ -37,11 +38,16 @@ export function setupChat(bot: Telegraf) {
             command: 'job_stats',
             description: 'Get job stats for this chat',
         },
-        {
+    ];
+
+    if (Config.ENABLE_RESTART) {
+        commands.push({
             command: 'restart',
             description: 'Restart the bot',
-        },
-    ]);
+        });
+    }
+
+    bot.telegram.setMyCommands(commands);
 
     bot.start(async (ctx) => {
         try {
@@ -260,17 +266,29 @@ export function setupChat(bot: Telegraf) {
         );
     });
 
-    bot.command('restart', async (ctx) => {
-        logger.debug('Received restart command!', {
-            action: 'onRestartCommand',
-            chatId: ctx.chat.id,
-            messageId: ctx.message.message_id,
+    if (Config.ENABLE_RESTART) {
+        bot.command('restart', async (ctx) => {
+            logger.debug('Received restart command!', {
+                action: 'onRestartCommand',
+                chatId: ctx.chat.id,
+                messageId: ctx.message.message_id,
+            });
+
+            ctx.reply('Restarting...');
+
+            setTimeout(() => {
+                process.exit(-1);
+            }, 5000);
         });
+    } else {
+        bot.command('restart', async (ctx) => {
+            logger.debug('Received restart command!', {
+                action: 'onRestartCommand',
+                chatId: ctx.chat.id,
+                messageId: ctx.message.message_id,
+            });
 
-        ctx.reply('Restarting...');
-
-        setTimeout(() => {
-            process.exit(-1);
-        }, 5000);
-    });
+            ctx.reply('Restart is disabled!');
+        });
+    }
 }
