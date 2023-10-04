@@ -42,7 +42,7 @@ export async function setupBot() {
                     )
                 ) {
                     try {
-                        ctx.reply(
+                        await ctx.reply(
                             'Sorry! seems like you are not allowed to use me!'
                         );
                     } catch (error) {
@@ -56,7 +56,7 @@ export async function setupBot() {
 
                     if (ctx.chat?.type !== 'private') {
                         try {
-                            ctx.leaveChat();
+                            await ctx.leaveChat();
                         } catch (error) {
                             logger.error('Failed to leave chat', {
                                 action: 'onInit',

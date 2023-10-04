@@ -86,7 +86,7 @@ export function setupChat(bot: Telegraf) {
                 }
             );
 
-            ctx.reply(
+            await ctx.reply(
                 `Hi ${[ctx.from.first_name, ctx.from.last_name]
                     .filter((item) => !!item)
                     .join(' ')}`
@@ -117,7 +117,7 @@ export function setupChat(bot: Telegraf) {
             result,
         });
 
-        ctx.reply(`Cleanup result: ${result.affected} jobs deleted!`);
+        await ctx.reply(`Cleanup result: ${result.affected} jobs deleted!`);
     });
 
     bot.command('cleanup_failed', async (ctx) => {
@@ -139,7 +139,9 @@ export function setupChat(bot: Telegraf) {
             result,
         });
 
-        ctx.reply(`Cleanup result: ${result.affected} failed jobs deleted!`);
+        await ctx.reply(
+            `Cleanup result: ${result.affected} failed jobs deleted!`
+        );
     });
 
     bot.command('cleanup_completed', async (ctx) => {
@@ -161,7 +163,9 @@ export function setupChat(bot: Telegraf) {
             result,
         });
 
-        ctx.reply(`Cleanup result: ${result.affected} completed jobs deleted!`);
+        await ctx.reply(
+            `Cleanup result: ${result.affected} completed jobs deleted!`
+        );
     });
 
     bot.command('retry_failed', async (ctx) => {
@@ -197,7 +201,7 @@ export function setupChat(bot: Telegraf) {
             }
         }
 
-        ctx.reply(`Retry result: ${jobs.length} failed jobs re-queued!`);
+        await ctx.reply(`Retry result: ${jobs.length} failed jobs re-queued!`);
     });
 
     bot.command('retry_failed_all', async (ctx) => {
@@ -232,7 +236,7 @@ export function setupChat(bot: Telegraf) {
             }
         }
 
-        ctx.reply(`Retry result: ${jobs.length} failed jobs re-queued!`);
+        await ctx.reply(`Retry result: ${jobs.length} failed jobs re-queued!`);
     });
 
     bot.command('job_stats', async (ctx) => {
@@ -261,7 +265,7 @@ export function setupChat(bot: Telegraf) {
             result,
         });
 
-        ctx.reply(
+        await ctx.reply(
             `Job stats for this chat:\n\nQueued: ${result.queued}\nIn progress: ${result.inprogress}\nCompleted: ${result.completed}\nFailed: ${result.failed}\nFailed with retry: ${result.failed_with_retry}`
         );
     });
@@ -274,7 +278,7 @@ export function setupChat(bot: Telegraf) {
                 messageId: ctx.message.message_id,
             });
 
-            ctx.reply('Restarting...');
+            await ctx.reply('Restarting...');
 
             setTimeout(() => {
                 process.exit(-1);
@@ -288,7 +292,7 @@ export function setupChat(bot: Telegraf) {
                 messageId: ctx.message.message_id,
             });
 
-            ctx.reply('Restart is disabled!');
+            await ctx.reply('Restart is disabled!');
         });
     }
 }

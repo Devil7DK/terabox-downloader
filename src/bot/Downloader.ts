@@ -36,7 +36,7 @@ export function setupDownloader(bot: Telegraf) {
                 messageId: ctx.message.message_id,
                 messageObj: ctx.message,
             });
-            ctx.reply('Failed to handle message!', {
+            await ctx.reply('Failed to handle message!', {
                 reply_to_message_id: ctx.message.message_id,
             });
             return;
@@ -50,21 +50,23 @@ export function setupDownloader(bot: Telegraf) {
 
         if (urls.length) {
             try {
-                const message = await MessageRepository.create({
-                    chatId: ctx.chat.id,
-                    messageId: ctx.message.message_id,
-                })
-                    .save()
-                    .catch((error) => {
-                        logger.error('Failed to create message!', {
-                            action: 'onMessage',
-                            chatId: ctx.chat.id,
-                            messageId: ctx.message.message_id,
-                            error,
-                        });
-                        ctx.reply('Failed to save message metadata!');
-                        throw error;
+                let message: MessageEntity | undefined;
+
+                try {
+                    message = await MessageRepository.create({
+                        chatId: ctx.chat.id,
+                        messageId: ctx.message.message_id,
+                    }).save();
+                } catch (error) {
+                    logger.error('Failed to create message!', {
+                        action: 'onMessage',
+                        chatId: ctx.chat.id,
+                        messageId: ctx.message.message_id,
+                        error,
                     });
+                    await ctx.reply('Failed to save message metadata!');
+                    throw error;
+                }
 
                 for (let i = 0; i < urls.length; i++) {
                     const url = urls[i];
@@ -101,7 +103,7 @@ export function setupDownloader(bot: Telegraf) {
                 });
             }
         } else {
-            ctx.reply('No URLs found!', {
+            await ctx.reply('No URLs found!', {
                 reply_to_message_id: ctx.message.message_id,
             });
         }
@@ -125,7 +127,7 @@ export function setupDownloader(bot: Telegraf) {
                 jobId,
             });
 
-            ctx.answerCbQuery('Failed to find job!');
+            await ctx.answerCbQuery('Failed to find job!');
         } else {
             try {
                 job.status = 'queued';
@@ -134,7 +136,7 @@ export function setupDownloader(bot: Telegraf) {
 
                 scheduleJob(job);
 
-                ctx.answerCbQuery(
+                await ctx.answerCbQuery(
                     `Retrying job for ${ordinalSuffixOf(
                         job.retryCount
                     )} time! Please wait...`
@@ -147,7 +149,7 @@ export function setupDownloader(bot: Telegraf) {
                     error,
                 });
 
-                ctx.answerCbQuery('Failed to update job!');
+                await ctx.answerCbQuery('Failed to update job!');
             }
         }
     });
