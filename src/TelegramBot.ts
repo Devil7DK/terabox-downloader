@@ -30,17 +30,43 @@ export async function setupBot() {
     if (onlyAllowed) {
         bot.use(async (ctx, next) => {
             if (ctx.from && ctx.chat) {
+                logger.info('Checking if user is allowed to use the bot', {
+                    action: 'onInit',
+                    from: ctx.from,
+                    chat: ctx.chat,
+                });
+
                 if (
                     !allowedUsers.includes(
                         ctx.from?.username || ctx.from?.id?.toString?.()
                     )
                 ) {
-                    ctx.reply(
-                        'Sorry! seems like you are not allowed to use me!'
-                    );
-                    if (ctx.chat?.type !== 'private') {
-                        ctx.leaveChat();
+                    try {
+                        ctx.reply(
+                            'Sorry! seems like you are not allowed to use me!'
+                        );
+                    } catch (error) {
+                        logger.error('Failed to reply to user', {
+                            action: 'onInit',
+                            from: ctx.from,
+                            chat: ctx.chat,
+                            error,
+                        });
                     }
+
+                    if (ctx.chat?.type !== 'private') {
+                        try {
+                            ctx.leaveChat();
+                        } catch (error) {
+                            logger.error('Failed to leave chat', {
+                                action: 'onInit',
+                                from: ctx.from,
+                                chat: ctx.chat,
+                                error,
+                            });
+                        }
+                    }
+
                     return;
                 }
             }
@@ -91,6 +117,17 @@ export async function setupBot() {
     });
 
     logger.info('Launching bot!', { action: 'onInit' });
+
+    bot.catch((error, ctx) => {
+        logger.crit('Failed to process update!', {
+            action: 'onInit',
+            error,
+            chat: ctx.chat,
+            from: ctx.from,
+            message: ctx.message,
+            update: ctx.update,
+        });
+    });
 
     await bot.launch(launchOptions);
 }
