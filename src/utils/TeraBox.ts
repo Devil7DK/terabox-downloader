@@ -1,4 +1,8 @@
-import Axios, { AxiosProgressEvent, CreateAxiosDefaults } from 'axios';
+import Axios, {
+    AxiosProgressEvent,
+    AxiosRequestConfig,
+    CreateAxiosDefaults,
+} from 'axios';
 import { createWriteStream, existsSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { MessageEntity } from 'typegram';
@@ -36,6 +40,36 @@ const axios = wrapper(
             'Sec-Fetch-Site': 'same-origin',
         },
     } as CreateAxiosDefaults<any>)
+);
+
+// Retry the download requests 3 times if the error message is `ECONNRESET` (Only when responseType is stream)
+axios.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (
+            error.code === 'ECONNRESET' &&
+            error.config?.responseType === 'stream' &&
+            error.config?.method === 'get' &&
+            error.config?.retryCount < 3
+        ) {
+            error.config.retryCount = (error.config.retryCount || 0) + 1;
+
+            logger.warn(
+                `Request to ${error.config.url} failed with ECONNRESET. Retrying...`,
+                {
+                    action: 'onDownload',
+                    error,
+                }
+            );
+
+            // Wait for 5 seconds before retrying
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
+            return axios.request(error.config);
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 const downloadsPath = join(process.cwd(), 'downloads');
@@ -284,7 +318,8 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
                     responseType: 'stream',
                     onDownloadProgress: reportProgress,
                     signal: abortController.signal,
-                })
+                    retryCount: 0,
+                } as AxiosRequestConfig)
                 .then((response) => {
                     return new Promise<boolean>((resolve, reject) => {
                         response.data.pipe(writer);
