@@ -21,6 +21,8 @@ const allowedHosts = [
     'terabox.com',
     'www.teraboxapp.com',
     'teraboxapp.com',
+    'www.4funbox.com',
+    '4funbox.com',
 ];
 
 const axios = wrapper(
