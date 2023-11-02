@@ -20,14 +20,7 @@ import {
 } from '../types/index.js';
 import { formatBytes, round } from './Common.js';
 
-const allowedHosts = [
-    'www.terabox.com',
-    'terabox.com',
-    'www.teraboxapp.com',
-    'teraboxapp.com',
-    'www.4funbox.com',
-    '4funbox.com',
-];
+const allowedHosts = [/.*box.*/];
 
 const axios = wrapper(
     Axios.create({
@@ -89,7 +82,7 @@ if (!existsSync(downloadsPath)) {
 function filterTeraboxUrls(values: string[]): string[] {
     return values.filter((item) => {
         try {
-            return allowedHosts.includes(new URL(item).host);
+            return allowedHosts.some((regex) => regex.test(new URL(item).host));
         } catch (error) {
             return false;
         }
