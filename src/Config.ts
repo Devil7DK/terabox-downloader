@@ -56,4 +56,9 @@ export const Config = cleanEnv(process.env, {
         desc: 'Enable restart command',
         default: false,
     }),
+
+    PROXY_URL: str({
+        desc: 'Proxy URL',
+        default: '',
+    }),
 });

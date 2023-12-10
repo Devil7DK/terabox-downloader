@@ -5,6 +5,7 @@ import { BotCommand } from 'typegram';
 import { AppDataSource } from '../AppDataSource.js';
 import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
+import { store } from '../Store.js';
 import { ChatEntity, JobEntity } from '../entities/index.js';
 import { scheduleJob } from '../utils/JobQueue.js';
 
@@ -39,6 +40,13 @@ export function setupChat(bot: Telegraf) {
             description: 'Get job stats for this chat',
         },
     ];
+
+    if (Config.PROXY_URL) {
+        commands.push({
+            command: 'use_proxy',
+            description: 'Toggle proxy usage for downloading files',
+        });
+    }
 
     if (Config.ENABLE_RESTART) {
         commands.push({
@@ -269,6 +277,31 @@ export function setupChat(bot: Telegraf) {
             `Job stats for this chat:\n\nQueued: ${result.queued}\nIn progress: ${result.inprogress}\nCompleted: ${result.completed}\nFailed: ${result.failed}\nFailed with retry: ${result.failed_with_retry}`
         );
     });
+
+    if (Config.PROXY_URL) {
+        bot.command('use_proxy', async (ctx) => {
+            logger.debug('Received use proxy command!', {
+                action: 'onUseProxyCommand',
+                chatId: ctx.chat.id,
+                messageId: ctx.message.message_id,
+            });
+
+            const chat = await ChatRepository.findOne({
+                where: { id: ctx.chat.id },
+            });
+
+            if (!chat) {
+                await ctx.reply('Chat not found!');
+                return;
+            }
+
+            store.useProxy = !store.useProxy;
+
+            await ctx.reply(
+                store.useProxy ? 'Enabled proxy!' : 'Disabled proxy!'
+            );
+        });
+    }
 
     if (Config.ENABLE_RESTART) {
         bot.command('restart', async (ctx) => {

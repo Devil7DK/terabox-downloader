@@ -8,8 +8,10 @@ import { join } from 'path';
 import { MessageEntity } from 'typegram';
 
 import { wrapper } from 'axios-cookiejar-support';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import humanizeDuration from 'humanize-duration';
 import { throttle } from 'throttle-debounce';
+import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
 import { store } from '../Store.js';
 import { JobEntity } from '../entities/JobEntity.js';
@@ -148,6 +150,10 @@ async function getShareInfo(url: URL): Promise<TeraBoxShareInfo> {
             headers: {
                 Referer: 'https://terabox-dl.qtcloud.workers.dev/',
             },
+            httpsAgent:
+                store.useProxy && Config.PROXY_URL
+                    ? new HttpsProxyAgent(Config.PROXY_URL)
+                    : undefined,
         }
     );
 
@@ -181,6 +187,12 @@ async function getDownloadURL(
             sign: info.sign,
             timestamp: info.timestamp,
             fs_id: info.fs_id,
+        },
+        {
+            httpsAgent:
+                store.useProxy && Config.PROXY_URL
+                    ? new HttpsProxyAgent(Config.PROXY_URL)
+                    : undefined,
         }
     );
     logger.debug(`Fetched download URL for ${info.fs_id}`, {
@@ -312,6 +324,10 @@ export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
                     onDownloadProgress: reportProgress,
                     signal: abortController.signal,
                     retryCount: 0,
+                    httpsAgent:
+                        store.useProxy && Config.PROXY_URL
+                            ? new HttpsProxyAgent(Config.PROXY_URL)
+                            : undefined,
                 } as AxiosRequestConfig)
                 .then((response) => {
                     return new Promise<boolean>((resolve, reject) => {
