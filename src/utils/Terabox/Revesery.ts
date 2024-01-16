@@ -1,127 +1,23 @@
-import Axios, {
-    AxiosProgressEvent,
-    AxiosRequestConfig,
-    CreateAxiosDefaults,
-} from 'axios';
-import { createWriteStream, existsSync, mkdirSync, statSync } from 'fs';
-import { join } from 'path';
-import { MessageEntity } from 'typegram';
+// Download terabox files using https://www.revesery.com/p/terabox-downloader.html
 
-import { wrapper } from 'axios-cookiejar-support';
+import { AxiosProgressEvent, AxiosRequestConfig } from 'axios';
+import { createWriteStream, existsSync, statSync } from 'fs';
+import { join } from 'path';
+
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import humanizeDuration from 'humanize-duration';
 import { throttle } from 'throttle-debounce';
-import { Config } from '../Config.js';
-import { logger } from '../Logger.js';
-import { store } from '../Store.js';
-import { JobEntity } from '../entities/JobEntity.js';
+import { Config } from '../../Config.js';
+import { logger } from '../../Logger.js';
+import { store } from '../../Store.js';
+import { JobEntity } from '../../entities/JobEntity.js';
 import {
     DownloadedFile,
     TeraBoxFile,
     TeraBoxShareInfo,
-} from '../types/index.js';
-import { formatBytes, round } from './Common.js';
-
-const allowedHosts = [/.*box.*/];
-
-const axios = wrapper(
-    Axios.create({
-        headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin',
-        },
-    } as CreateAxiosDefaults<any>)
-);
-
-// Retry the download requests 3 times if the error message is `ECONNRESET` (Only when responseType is stream)
-axios.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        if (
-            error.code === 'ECONNRESET' &&
-            error.config?.responseType === 'stream' &&
-            error.config?.method === 'get' &&
-            error.config?.retryCount < 3
-        ) {
-            error.config.retryCount = (error.config.retryCount || 0) + 1;
-
-            logger.warn(
-                `Request to ${error.config.url} failed with ECONNRESET. Retrying...`,
-                {
-                    action: 'onDownload',
-                    error,
-                }
-            );
-
-            // Wait for 5 seconds before retrying
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-
-            return axios.request(error.config);
-        }
-
-        return Promise.reject(error);
-    }
-);
-
-const downloadsPath = join(process.cwd(), 'downloads');
-
-if (!existsSync(downloadsPath)) {
-    logger.info(
-        `Downloads directory at "${downloadsPath}" doesn't exist! Creating now...`,
-        { action: 'onInit' }
-    );
-    mkdirSync(downloadsPath);
-} else {
-    logger.info(`Downloads directory already exists at "${downloadsPath}"`, {
-        action: 'onInit',
-    });
-}
-
-function filterTeraboxUrls(values: string[]): string[] {
-    return values.filter((item) => {
-        try {
-            return allowedHosts.some((regex) => regex.test(new URL(item).host));
-        } catch (error) {
-            return false;
-        }
-    });
-}
-
-export function parseUrl(value: string): string[];
-export function parseUrl(value: string, entities: MessageEntity[]): string[];
-export function parseUrl(value: string, entities?: MessageEntity[]): string[] {
-    let urls: string[] = [];
-
-    if (typeof value === 'string') {
-        if (Array.isArray(entities)) {
-            urls = entities
-                .map((entity) => {
-                    if (entity.type === 'url') {
-                        return value.substring(
-                            entity.offset,
-                            entity.offset + entity.length
-                        );
-                    }
-                    return '';
-                })
-                .filter((item) => !!item);
-        } else {
-            const matches = value.matchAll(
-                /(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])/gm
-            );
-
-            urls = Array.from(matches).map((match) => match[0]);
-        }
-    }
-
-    return filterTeraboxUrls(urls).filter(
-        (item, index, arr) => arr.indexOf(item) === index
-    );
-}
+} from '../../types/index.js';
+import { formatBytes, round } from '../Common.js';
+import { axios, downloadsPath } from './Common.js';
 
 function getShareCode(url: URL): string {
     if (url.searchParams.has('surl')) {
@@ -217,7 +113,9 @@ async function getDownloadURL(
     return dlink;
 }
 
-export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
+export async function downloadFilesUsingRevesery(
+    job: JobEntity
+): Promise<DownloadedFile[]> {
     const files: DownloadedFile[] = [];
 
     const url = new URL(job.url);

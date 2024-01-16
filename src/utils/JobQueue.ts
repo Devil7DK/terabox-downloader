@@ -5,7 +5,7 @@ import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
 import { JobEntity } from '../entities/index.js';
 import { JobWorker } from '../types/JobWorker.js';
-import { downloadFiles } from './TeraBox.js';
+import { downloadFiles } from './Terabox/index.js';
 
 const JobRepository = AppDataSource.getRepository(JobEntity);
 
