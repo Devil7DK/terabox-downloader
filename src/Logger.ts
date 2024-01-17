@@ -14,7 +14,7 @@ export const logger = winston.createLogger({
                 winston.format.timestamp(),
                 winston.format.json(),
                 winston.format.printf(
-                    ({ timestamp, level, message, action, ...info }) => {
+                    ({ timestamp, level, message, action, error, ...info }) => {
                         const levelColor =
                             level === 'info'
                                 ? chalk.greenBright
@@ -47,6 +47,14 @@ export const logger = winston.createLogger({
                                         JSON.stringify(info),
                                         { language: 'json' }
                                     )}`;
+                        }
+
+                        if (error) {
+                            value += ` -- ${
+                                error instanceof Error
+                                    ? error.stack ?? error.message
+                                    : error.toString()
+                            }`;
                         }
 
                         if (info.parameters) {
