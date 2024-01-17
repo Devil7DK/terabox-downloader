@@ -1,15 +1,11 @@
 // Download terabox files using https://www.revesery.com/p/terabox-downloader.html
 
-import { AxiosProgressEvent, AxiosRequestConfig } from 'axios';
-import { createWriteStream, existsSync, statSync } from 'fs';
+import { existsSync, statSync } from 'fs';
 import { join } from 'path';
 
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import humanizeDuration from 'humanize-duration';
-import { throttle } from 'throttle-debounce';
 import { Config } from '../../Config.js';
 import { logger } from '../../Logger.js';
-import { store } from '../../Store.js';
 import { JobEntity } from '../../entities/JobEntity.js';
 import { ConfigEntity } from '../../entities/index.js';
 import {
@@ -17,8 +13,7 @@ import {
     TeraBoxFile,
     TeraBoxShareInfo,
 } from '../../types/index.js';
-import { formatBytes, round } from '../Common.js';
-import { axios, downloadsPath } from './Common.js';
+import { axios, downloadFile, downloadsPath } from './Common.js';
 
 function getShareCode(url: URL): string {
     if (url.searchParams.has('surl')) {
@@ -129,7 +124,12 @@ export async function downloadFilesUsingRevesery(
         url,
         job.chat.config
     ).catch((error) => {
-        console.error('Failed to get share info for URL!', url, error);
+        logger.error('Failed to get share info!', {
+            action: 'onDownload',
+            url,
+            error,
+        });
+
         throw new Error('Failed to get share info!');
     });
 
@@ -141,13 +141,13 @@ export async function downloadFilesUsingRevesery(
             },
             job.chat.config
         ).catch((error) => {
-            console.error(
-                'Failed to get download URL!',
+            logger.error('Failed to get download URL!', {
+                action: 'onDownload',
                 url,
                 shareInfo,
                 file,
-                error
-            );
+                error,
+            });
 
             throw new Error('Failed to get download URL!');
         });
@@ -164,113 +164,10 @@ export async function downloadFilesUsingRevesery(
                 url,
             });
         } else {
-            const reportProgress = throttle(
-                1000,
-                ({ loaded, total, rate, estimated }: AxiosProgressEvent) => {
-                    let progress = total
-                        ? `${round((loaded / total) * 100, 2).toFixed(
-                              2
-                          )}% (${formatBytes(loaded)} / ${formatBytes(total)})`
-                        : formatBytes(loaded);
-
-                    if (rate) {
-                        progress += ` ${formatBytes(rate)}/s`;
-                    }
-
-                    if (estimated) {
-                        progress += ` ${humanizeDuration(estimated * 1000, {
-                            units: ['h', 'm', 's'],
-                            maxDecimalPoints: 0,
-                        })} remaining`;
-                    }
-
-                    store.bot?.telegram
-                        .editMessageText(
-                            job.chatId,
-                            job.statusMessageId,
-                            undefined,
-                            `URL: ${job.url}\nStatus: ${job.status}\nProgress: ${progress}`
-                        )
-                        .catch((error) => {
-                            logger.error(
-                                `Failed to update message ${job.statusMessageId} for download progress!`,
-                                {
-                                    action: 'onDownload',
-                                    file,
-                                    job,
-                                    error,
-                                }
-                            );
-                        });
-                }
-            );
-
-            const status = { completed: false };
-            const abortController = new AbortController();
-
-            process.once('SIGINT', () => {
-                if (!status.completed) {
-                    status.completed = true;
-                    abortController.abort();
-                }
+            await downloadFile(job, downloadUrl, filePath, {
+                file,
+                shareInfo,
             });
-            process.once('SIGTERM', () => {
-                if (!status.completed) {
-                    status.completed = true;
-                    abortController.abort();
-                }
-            });
-
-            logger.info(`Starting download for url ${url.toString()}`, {
-                action: 'onDownload',
-                downloadUrl,
-                job,
-            });
-            const writer = createWriteStream(filePath);
-            await axios
-                .get(downloadUrl, {
-                    responseType: 'stream',
-                    onDownloadProgress: reportProgress,
-                    signal: abortController.signal,
-                    retryCount: 0,
-                    httpsAgent:
-                        job.chat.config.useProxy && Config.PROXY_URL
-                            ? new HttpsProxyAgent(Config.PROXY_URL)
-                            : undefined,
-                } as AxiosRequestConfig)
-                .then((response) => {
-                    return new Promise<boolean>((resolve, reject) => {
-                        response.data.pipe(writer);
-
-                        let error: Error | null = null;
-
-                        writer.on('error', (err) => {
-                            error = err;
-                            writer.close();
-                            reject(err);
-                        });
-
-                        writer.on('close', () => {
-                            if (!error) {
-                                resolve(true);
-                            }
-                        });
-                    });
-                })
-                .catch((error) => {
-                    logger.error('Failed to download file!', {
-                        url,
-                        shareInfo,
-                        file,
-                        downloadUrl,
-                        error,
-                    });
-
-                    throw new Error('Failed to download file!');
-                })
-                .finally(() => {
-                    status.completed = true;
-                });
         }
 
         files.push({ filePath, fileName: file.filename });
