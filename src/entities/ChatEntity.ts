@@ -1,11 +1,18 @@
 import telegram from 'telegram';
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import {
+    Column,
+    Entity,
+    OneToOne,
+    PrimaryGeneratedColumn,
+    Relation,
+} from 'typeorm';
 
 import { BaseEntity } from './BaseEntity.js';
+import { ConfigEntity } from './ConfigEntity.js';
 
 @Entity('chats')
 export class ChatEntity extends BaseEntity {
-    @PrimaryColumn('bigint')
+    @PrimaryGeneratedColumn()
     public id!: number;
 
     @Column('simple-enum', { enum: ['supergroup', 'group', 'private'] })
@@ -19,4 +26,10 @@ export class ChatEntity extends BaseEntity {
 
     @Column('simple-json')
     public userInfo!: Partial<telegram.Api.User>;
+
+    @OneToOne(() => ConfigEntity, (config) => config.chat, {
+        eager: true,
+        cascade: true,
+    })
+    public config!: Relation<ConfigEntity>;
 }

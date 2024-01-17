@@ -5,11 +5,13 @@ import { BotCommand } from 'typegram';
 import { AppDataSource } from '../AppDataSource.js';
 import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
-import { store } from '../Store.js';
-import { ChatEntity, JobEntity } from '../entities/index.js';
+import { ChatEntity, ConfigEntity, JobEntity } from '../entities/index.js';
+import { DownloadMethod } from '../types/index.js';
+import { getEnumLabel } from '../utils/Common.js';
 import { scheduleJob } from '../utils/JobQueue.js';
 
 const ChatRepository = AppDataSource.getRepository(ChatEntity);
+const ConfigRepository = AppDataSource.getRepository(ConfigEntity);
 const JobRepository = AppDataSource.getRepository(JobEntity);
 
 export function setupChat(bot: Telegraf) {
@@ -39,6 +41,10 @@ export function setupChat(bot: Telegraf) {
             command: 'job_stats',
             description: 'Get job stats for this chat',
         },
+        {
+            command: '/download_method',
+            description: 'View/update download method',
+        },
     ];
 
     if (Config.PROXY_URL) {
@@ -65,7 +71,7 @@ export function setupChat(bot: Telegraf) {
                 messageId: ctx.message.message_id,
             });
 
-            const existingChat = await ChatRepository.findOne({
+            let existingChat = await ChatRepository.findOne({
                 where: { id: ctx.chat.id },
             });
 
@@ -76,12 +82,19 @@ export function setupChat(bot: Telegraf) {
                     messageId: ctx.message.message_id,
                 });
 
-                await ChatRepository.create({
+                existingChat = await ChatRepository.create({
                     id: ctx.chat.id,
                     type: ctx.chat.type,
                     status: 'active',
                     userId: ctx.from.id,
                     userInfo: ctx.from,
+                }).save();
+            }
+
+            if (!existingChat.config) {
+                existingChat.config = await ConfigRepository.create({
+                    chatId: existingChat.id,
+                    downloadMethod: Object.values(DownloadMethod)[0],
                 }).save();
             }
 
@@ -278,6 +291,86 @@ export function setupChat(bot: Telegraf) {
         );
     });
 
+    bot.command('download_method', async (ctx) => {
+        // Reply with the current download method and buttons to change it
+        const chat = await ChatRepository.findOne({
+            where: { id: ctx.chat.id },
+        });
+
+        if (!chat) {
+            await ctx.reply('Chat not found!');
+            return;
+        }
+
+        if (!chat.config) {
+            chat.config = await ConfigRepository.create({
+                chatId: chat.id,
+                downloadMethod: Object.values(DownloadMethod)[0],
+            }).save();
+        }
+
+        const currentDownloadMethod = chat.config.downloadMethod;
+
+        await ctx.reply(
+            `Current download method is ${getEnumLabel(
+                currentDownloadMethod,
+                DownloadMethod
+            )}`,
+            {
+                reply_markup: {
+                    inline_keyboard: [
+                        Object.entries(DownloadMethod).map(([key, value]) => ({
+                            text: key,
+                            callback_data: `download_method:${value}`,
+                        })),
+                    ],
+                },
+            }
+        );
+    });
+
+    bot.action(/download_method:(.+)/, async (ctx) => {
+        const downloadMethod = ctx.match[1] as DownloadMethod;
+
+        logger.debug('Received download method update action!', {
+            action: 'onAction',
+            chatId: ctx.chat?.id,
+            downloadMethod,
+        });
+
+        if (!Object.values(DownloadMethod).includes(downloadMethod)) {
+            await ctx.answerCbQuery('Invalid download method!');
+            return;
+        }
+
+        if (!ctx.chat) {
+            await ctx.answerCbQuery('Chat not found!');
+            return;
+        }
+
+        const chat = await ChatRepository.findOne({
+            where: { id: ctx.chat.id },
+        });
+
+        if (!chat) {
+            await ctx.answerCbQuery('Chat not found!');
+            return;
+        }
+
+        if (!chat.config) {
+            chat.config = await ConfigRepository.create({
+                chatId: chat.id,
+                downloadMethod: Object.values(DownloadMethod)[0],
+            }).save();
+        }
+
+        chat.config.downloadMethod = downloadMethod;
+
+        await chat.config.save();
+
+        await ctx.answerCbQuery(`Download method set to ${downloadMethod}!`);
+    });
+
     if (Config.PROXY_URL) {
         bot.command('use_proxy', async (ctx) => {
             logger.debug('Received use proxy command!', {
@@ -295,10 +388,12 @@ export function setupChat(bot: Telegraf) {
                 return;
             }
 
-            store.useProxy = !store.useProxy;
+            chat.config.useProxy = !chat.config.useProxy;
+
+            await chat.config.save();
 
             await ctx.reply(
-                store.useProxy ? 'Enabled proxy!' : 'Disabled proxy!'
+                chat.config.useProxy ? 'Enabled proxy!' : 'Disabled proxy!'
             );
         });
     }

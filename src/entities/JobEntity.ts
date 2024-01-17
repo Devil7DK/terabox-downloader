@@ -50,9 +50,9 @@ export class JobEntity extends BaseEntity {
     @Column({ default: 0 })
     public retryCount!: number;
 
-    @ManyToOne(() => ChatEntity)
+    @ManyToOne(() => ChatEntity, { eager: true })
     @JoinColumn({ name: 'chatId' })
-    public chat?: ChatEntity;
+    public chat!: ChatEntity;
 
     @ManyToOne(() => MessageEntity, (message) => message.jobs)
     @JoinColumn({ name: 'messageEntityId' })

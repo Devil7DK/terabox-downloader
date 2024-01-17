@@ -3,7 +3,7 @@ import { MessageEntity } from 'typegram';
 
 import { logger } from '../../Logger.js';
 import { JobEntity } from '../../entities/JobEntity.js';
-import { DownloadedFile } from '../../types/index.js';
+import { DownloadMethod, DownloadedFile } from '../../types/index.js';
 import { downloadsPath } from './Common.js';
 import { downloadFilesUsingRevesery } from './Revesery.js';
 
@@ -63,8 +63,17 @@ export function parseUrl(value: string, entities?: MessageEntity[]): string[] {
     );
 }
 
+const downloadMethods: Record<
+    DownloadMethod,
+    (job: JobEntity) => Promise<DownloadedFile[]>
+> = {
+    revesery: downloadFilesUsingRevesery,
+};
+
 export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
-    const files: DownloadedFile[] = await downloadFilesUsingRevesery(job);
+    const files: DownloadedFile[] = await downloadMethods[
+        job.chat.config.downloadMethod
+    ](job);
 
     return files;
 }

@@ -11,6 +11,7 @@ import { Config } from '../../Config.js';
 import { logger } from '../../Logger.js';
 import { store } from '../../Store.js';
 import { JobEntity } from '../../entities/JobEntity.js';
+import { ConfigEntity } from '../../entities/index.js';
 import {
     DownloadedFile,
     TeraBoxFile,
@@ -32,7 +33,10 @@ function getShareCode(url: URL): string {
     throw new Error('Failed to get share id from URL!');
 }
 
-async function getShareInfo(url: URL): Promise<TeraBoxShareInfo> {
+async function getShareInfo(
+    url: URL,
+    config: ConfigEntity
+): Promise<TeraBoxShareInfo> {
     const shareCode = getShareCode(url);
 
     logger.debug(`Fetching share info for "${url}"`, {
@@ -47,7 +51,7 @@ async function getShareInfo(url: URL): Promise<TeraBoxShareInfo> {
                 Referer: 'https://terabox-dl.qtcloud.workers.dev/',
             },
             httpsAgent:
-                store.useProxy && Config.PROXY_URL
+                config.useProxy && Config.PROXY_URL
                     ? new HttpsProxyAgent(Config.PROXY_URL)
                     : undefined,
         }
@@ -69,7 +73,8 @@ async function getShareInfo(url: URL): Promise<TeraBoxShareInfo> {
 }
 
 async function getDownloadURL(
-    info: Omit<TeraBoxShareInfo, 'list'> & TeraBoxFile
+    info: Omit<TeraBoxShareInfo, 'list'> & TeraBoxFile,
+    config: ConfigEntity
 ) {
     logger.debug(`Fetching download URL for ${info.fs_id}`, {
         action: 'onDownload',
@@ -86,7 +91,7 @@ async function getDownloadURL(
         },
         {
             httpsAgent:
-                store.useProxy && Config.PROXY_URL
+                config.useProxy && Config.PROXY_URL
                     ? new HttpsProxyAgent(Config.PROXY_URL)
                     : undefined,
         }
@@ -120,16 +125,22 @@ export async function downloadFilesUsingRevesery(
 
     const url = new URL(job.url);
 
-    const { list, ...shareInfo } = await getShareInfo(url).catch((error) => {
+    const { list, ...shareInfo } = await getShareInfo(
+        url,
+        job.chat.config
+    ).catch((error) => {
         console.error('Failed to get share info for URL!', url, error);
         throw new Error('Failed to get share info!');
     });
 
     for (const file of list) {
-        const downloadUrl = await getDownloadURL({
-            ...shareInfo,
-            ...file,
-        }).catch((error) => {
+        const downloadUrl = await getDownloadURL(
+            {
+                ...shareInfo,
+                ...file,
+            },
+            job.chat.config
+        ).catch((error) => {
             console.error(
                 'Failed to get download URL!',
                 url,
@@ -223,7 +234,7 @@ export async function downloadFilesUsingRevesery(
                     signal: abortController.signal,
                     retryCount: 0,
                     httpsAgent:
-                        store.useProxy && Config.PROXY_URL
+                        job.chat.config.useProxy && Config.PROXY_URL
                             ? new HttpsProxyAgent(Config.PROXY_URL)
                             : undefined,
                 } as AxiosRequestConfig)

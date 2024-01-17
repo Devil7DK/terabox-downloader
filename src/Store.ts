@@ -1,8 +1,7 @@
 import { Telegraf } from 'telegraf';
 
-const _store: { bot: Telegraf | null; useProxy: boolean } = {
+const _store: { bot: Telegraf | null } = {
     bot: null,
-    useProxy: false,
 };
 
 export const store = _store;

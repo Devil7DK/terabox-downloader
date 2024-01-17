@@ -41,3 +41,10 @@ export function ordinalSuffixOf(value: number) {
     }
     return value + 'th';
 }
+
+export function getEnumLabel<T>(value: T, enumType: any): string {
+    return (
+        Object.keys(enumType).find((key) => enumType[key] === value) ||
+        (value as string)
+    );
+}
