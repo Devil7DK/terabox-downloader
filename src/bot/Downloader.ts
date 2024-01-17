@@ -92,6 +92,8 @@ export function setupDownloader(bot: Telegraf) {
                         url,
                     }).save();
 
+                    await job.reload();
+
                     scheduleJob(job);
                 }
             } catch (error) {
