@@ -1,18 +1,12 @@
 import telegram from 'telegram';
-import {
-    Column,
-    Entity,
-    OneToOne,
-    PrimaryGeneratedColumn,
-    Relation,
-} from 'typeorm';
+import { Column, Entity, OneToOne, PrimaryColumn, Relation } from 'typeorm';
 
 import { BaseEntity } from './BaseEntity.js';
 import { ConfigEntity } from './ConfigEntity.js';
 
 @Entity('chats')
 export class ChatEntity extends BaseEntity {
-    @PrimaryGeneratedColumn()
+    @PrimaryColumn('bigint')
     public id!: number;
 
     @Column('simple-enum', { enum: ['supergroup', 'group', 'private'] })
