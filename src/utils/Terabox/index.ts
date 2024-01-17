@@ -6,6 +6,7 @@ import { JobEntity } from '../../entities/JobEntity.js';
 import { DownloadMethod, DownloadedFile } from '../../types/index.js';
 import { downloadsPath } from './Common.js';
 import { downloadFilesUsingRevesery } from './Revesery.js';
+import { downloadFilesUsingTeraboxDownloaderDotNet } from './TeraboxDownloader.js';
 
 const allowedHosts = [/.*box.*/];
 
@@ -67,7 +68,9 @@ const downloadMethods: Record<
     DownloadMethod,
     (job: JobEntity) => Promise<DownloadedFile[]>
 > = {
-    revesery: downloadFilesUsingRevesery,
+    [DownloadMethod.Revesery]: downloadFilesUsingRevesery,
+    [DownloadMethod.TeraboxDownloaderDotNet]:
+        downloadFilesUsingTeraboxDownloaderDotNet,
 };
 
 export async function downloadFiles(job: JobEntity): Promise<DownloadedFile[]> {
