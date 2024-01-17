@@ -19,6 +19,7 @@
     "https-proxy-agent": "^7.0.2",
     "humanize-duration": "^3.28.0",
     "mysql": "^2.18.1",
+    "node-html-parser": "^6.1.12",
     "qs": "^6.11.1",
     "queue": "^7.0.0",
     "reflect-metadata": "^0.1.13",
