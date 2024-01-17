@@ -119,7 +119,7 @@ export async function setupBot() {
     logger.info('Launching bot!', { action: 'onInit' });
 
     bot.catch((error, ctx) => {
-        logger.crit('Failed to process update!', {
+        logger.error('Failed to process update!', {
             action: 'onInit',
             error,
             chat: ctx.chat,
