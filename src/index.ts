@@ -11,15 +11,15 @@ logger.debug('Starting application...', {
     config: Config,
 });
 
-AppDataSource.initialize().then(() => {
+AppDataSource.initialize().then(async () => {
     logger.info('Database initialized!', {
         action: 'onStart',
     });
 
+    await setupBot();
+
     logger.info('Loading previously scheduled jobs!', {
         action: 'onStart',
     });
-    scheduleExistingJobs();
-
-    setupBot();
+    await scheduleExistingJobs();
 });
