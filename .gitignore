@@ -134,3 +134,6 @@ downloads
 logs
 database.db
 cookie.txt
+
+# Cached hostnames for build.sh
+*_host
