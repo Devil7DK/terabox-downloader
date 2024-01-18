@@ -60,8 +60,10 @@ queue.addEventListener('end', (e) => {
 });
 
 export async function scheduleExistingJobs(): Promise<void> {
+    await JobRepository.update({ status: 'inprogress' }, { status: 'queued' });
+
     const existingJobs = await JobRepository.find({
-        where: [{ status: 'queued' }, { status: 'inprogress' }],
+        where: { status: 'queued' },
     });
 
     if (existingJobs && existingJobs.length) {
