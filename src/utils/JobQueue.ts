@@ -60,7 +60,25 @@ queue.addEventListener('end', (e) => {
 });
 
 export async function scheduleExistingJobs(): Promise<void> {
-    await JobRepository.update({ status: 'inprogress' }, { status: 'queued' });
+    const inprogressJobs = await JobRepository.find({
+        where: { status: 'inprogress' },
+    });
+
+    // Reset inprogress jobs to queued in batch of 10
+    while (inprogressJobs.length) {
+        const batch = inprogressJobs.splice(0, 10);
+
+        logger.info(`Resetting ${batch.length} inprogress jobs!`, {
+            action: 'onSchedule',
+        });
+
+        await JobRepository.update(
+            batch.map((job) => job.id),
+            { status: 'queued' }
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
 
     const existingJobs = await JobRepository.find({
         where: { status: 'queued' },
