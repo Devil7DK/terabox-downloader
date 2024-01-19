@@ -14,6 +14,7 @@ import { Config } from '../../Config.js';
 import { logger } from '../../Logger.js';
 import { store } from '../../Store.js';
 import { JobEntity } from '../../entities/JobEntity.js';
+import { TeraboxMirror } from '../../types/index.js';
 import { formatBytes, round } from '../Common.js';
 
 export const downloadsPath = join(process.cwd(), 'downloads');
@@ -67,6 +68,13 @@ export async function downloadFile(
     filePath: string,
     additionalLogParams: Record<string, unknown>
 ): Promise<void> {
+    if (job.chat.config.mirror !== TeraboxMirror.TERABOX) {
+        downloadUrl = downloadUrl.replace(
+            'terabox.com',
+            job.chat.config.mirror.toLowerCase()
+        );
+    }
+
     const reportProgress = throttle(
         1000,
         ({ loaded, total, rate, estimated }: AxiosProgressEvent) => {

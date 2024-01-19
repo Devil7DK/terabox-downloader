@@ -7,7 +7,7 @@ import {
     Relation,
 } from 'typeorm';
 
-import { DownloadMethod } from '../types/index.js';
+import { DownloadMethod, TeraboxMirror } from '../types/index.js';
 import { BaseEntity } from './BaseEntity.js';
 import { ChatEntity } from './ChatEntity.js';
 
@@ -21,8 +21,15 @@ export class ConfigEntity extends BaseEntity {
 
     @Column('simple-enum', {
         enum: DownloadMethod,
+        default: Object.values(DownloadMethod)[0],
     })
     public downloadMethod!: DownloadMethod;
+
+    @Column('simple-enum', {
+        enum: TeraboxMirror,
+        default: Object.values(TeraboxMirror)[0],
+    })
+    public mirror!: TeraboxMirror;
 
     @Column('boolean', { default: false })
     public useProxy!: boolean;

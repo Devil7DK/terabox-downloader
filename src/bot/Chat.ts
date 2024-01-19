@@ -6,13 +6,21 @@ import { AppDataSource } from '../AppDataSource.js';
 import { Config } from '../Config.js';
 import { logger } from '../Logger.js';
 import { ChatEntity, ConfigEntity, JobEntity } from '../entities/index.js';
-import { DownloadMethod } from '../types/index.js';
+import { DownloadMethod, TeraboxMirror } from '../types/index.js';
 import { getEnumLabel } from '../utils/Common.js';
 import { scheduleJob } from '../utils/JobQueue.js';
 
 const ChatRepository = AppDataSource.getRepository(ChatEntity);
 const ConfigRepository = AppDataSource.getRepository(ConfigEntity);
 const JobRepository = AppDataSource.getRepository(JobEntity);
+
+const createDefaultConfig = async (chat: ChatEntity): Promise<ConfigEntity> => {
+    return await ConfigRepository.create({
+        chatId: chat.id,
+        downloadMethod: Object.values(DownloadMethod)[0],
+        mirror: Object.values(TeraboxMirror)[0],
+    }).save();
+};
 
 export function setupChat(bot: Telegraf) {
     const commands: BotCommand[] = [
@@ -44,6 +52,10 @@ export function setupChat(bot: Telegraf) {
         {
             command: '/download_method',
             description: 'View/update download method',
+        },
+        {
+            command: '/mirror',
+            description: 'View/update mirror used for downloading files',
         },
     ];
 
@@ -92,10 +104,7 @@ export function setupChat(bot: Telegraf) {
             }
 
             if (!existingChat.config) {
-                existingChat.config = await ConfigRepository.create({
-                    chatId: existingChat.id,
-                    downloadMethod: Object.values(DownloadMethod)[0],
-                }).save();
+                existingChat.config = await createDefaultConfig(existingChat);
             }
 
             logger.info(
@@ -303,10 +312,7 @@ export function setupChat(bot: Telegraf) {
         }
 
         if (!chat.config) {
-            chat.config = await ConfigRepository.create({
-                chatId: chat.id,
-                downloadMethod: Object.values(DownloadMethod)[0],
-            }).save();
+            chat.config = await createDefaultConfig(chat);
         }
 
         const currentDownloadMethod = chat.config.downloadMethod;
@@ -358,10 +364,7 @@ export function setupChat(bot: Telegraf) {
         }
 
         if (!chat.config) {
-            chat.config = await ConfigRepository.create({
-                chatId: chat.id,
-                downloadMethod: Object.values(DownloadMethod)[0],
-            }).save();
+            chat.config = await createDefaultConfig(chat);
         }
 
         chat.config.downloadMethod = downloadMethod;
@@ -369,6 +372,74 @@ export function setupChat(bot: Telegraf) {
         await chat.config.save();
 
         await ctx.answerCbQuery(`Download method set to ${downloadMethod}!`);
+    });
+
+    bot.command('mirror', async (ctx) => {
+        // Reply with the current mirror and buttons to change it
+        const chat = await ChatRepository.findOne({
+            where: { id: ctx.chat.id },
+        });
+
+        if (!chat) {
+            await ctx.reply('Chat not found!');
+            return;
+        }
+
+        if (!chat.config) {
+            chat.config = await createDefaultConfig(chat);
+        }
+
+        const currentMirror = chat.config.mirror;
+
+        await ctx.reply(`Current mirror is ${currentMirror}`, {
+            reply_markup: {
+                inline_keyboard: [
+                    Object.entries(TeraboxMirror).map(([_, value]) => ({
+                        text: value,
+                        callback_data: `mirror:${value}`,
+                    })),
+                ],
+            },
+        });
+    });
+
+    bot.action(/mirror:(.+)/, async (ctx) => {
+        const mirror = ctx.match[1] as TeraboxMirror;
+
+        logger.debug('Received mirror update action!', {
+            action: 'onAction',
+            chatId: ctx.chat?.id,
+            mirror,
+        });
+
+        if (!Object.values(TeraboxMirror).includes(mirror)) {
+            await ctx.answerCbQuery('Invalid mirror!');
+            return;
+        }
+
+        if (!ctx.chat) {
+            await ctx.answerCbQuery('Chat not found!');
+            return;
+        }
+
+        const chat = await ChatRepository.findOne({
+            where: { id: ctx.chat.id },
+        });
+
+        if (!chat) {
+            await ctx.answerCbQuery('Chat not found!');
+            return;
+        }
+
+        if (!chat.config) {
+            chat.config = await createDefaultConfig(chat);
+        }
+
+        chat.config.mirror = mirror;
+
+        await chat.config.save();
+
+        await ctx.answerCbQuery(`Mirror set to ${mirror}!`);
     });
 
     if (Config.PROXY_URL) {
