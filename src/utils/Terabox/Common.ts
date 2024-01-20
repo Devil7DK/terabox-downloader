@@ -120,19 +120,6 @@ export async function downloadFile(
     const status = { completed: false };
     const abortController = new AbortController();
 
-    process.once('SIGINT', () => {
-        if (!status.completed) {
-            status.completed = true;
-            abortController.abort();
-        }
-    });
-    process.once('SIGTERM', () => {
-        if (!status.completed) {
-            status.completed = true;
-            abortController.abort();
-        }
-    });
-
     logger.info(`Starting download for url ${job.url}`, {
         action: 'onDownload',
         downloadUrl,

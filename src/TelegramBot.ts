@@ -24,8 +24,16 @@ export async function setupBot() {
             : undefined
     ));
 
-    process.once('SIGINT', () => bot.stop('SIGINT'));
-    process.once('SIGTERM', () => bot.stop('SIGTERM'));
+    process.once('SIGINT', () => {
+        bot.stop('SIGINT');
+
+        process.exit(0);
+    });
+    process.once('SIGTERM', () => {
+        bot.stop('SIGTERM');
+
+        process.exit(0);
+    });
 
     if (onlyAllowed) {
         bot.use(async (ctx, next) => {
