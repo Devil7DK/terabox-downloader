@@ -317,7 +317,7 @@ export function setupChat(bot: Telegraf) {
 
         const currentDownloadMethod = chat.config.downloadMethod;
 
-        await ctx.reply(
+        const reply = await ctx.reply(
             `Current download method is ${getEnumLabel(
                 currentDownloadMethod,
                 DownloadMethod
@@ -333,6 +333,8 @@ export function setupChat(bot: Telegraf) {
                 },
             }
         );
+
+        console.log(reply.message_id);
     });
 
     bot.action(/download_method:(.+)/, async (ctx) => {
@@ -372,6 +374,16 @@ export function setupChat(bot: Telegraf) {
         await chat.config.save();
 
         await ctx.answerCbQuery(`Download method set to ${downloadMethod}!`);
+
+        await ctx.telegram.editMessageText(
+            ctx.chat.id,
+            ctx.update.callback_query.message?.message_id,
+            undefined,
+            `Download method updated to ${getEnumLabel(
+                downloadMethod,
+                DownloadMethod
+            )}`
+        );
     });
 
     bot.command('mirror', async (ctx) => {
@@ -440,6 +452,13 @@ export function setupChat(bot: Telegraf) {
         await chat.config.save();
 
         await ctx.answerCbQuery(`Mirror set to ${mirror}!`);
+
+        await ctx.telegram.editMessageText(
+            ctx.chat.id,
+            ctx.update.callback_query.message?.message_id,
+            undefined,
+            `Mirror updated to ${mirror}`
+        );
     });
 
     if (Config.PROXY_URL) {
