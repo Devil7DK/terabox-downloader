@@ -1,4 +1,5 @@
 import Axios, {
+    AxiosInstance,
     AxiosProgressEvent,
     AxiosRequestConfig,
     CreateAxiosDefaults,
@@ -29,8 +30,8 @@ export const axios = wrapper(
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-origin',
         },
-    } as CreateAxiosDefaults<any>)
-);
+    } as CreateAxiosDefaults<any>) as any
+) as AxiosInstance;
 
 // Retry the download requests 3 times if the error message is `ECONNRESET` (Only when responseType is stream)
 axios.interceptors.response.use(

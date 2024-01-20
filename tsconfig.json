@@ -4,7 +4,7 @@
     "lib": ["ES2020"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "module": "ESNext",
+    "module": "NodeNext",
     "moduleResolution": "nodenext",
     "outDir": "./dist",
     "esModuleInterop": true,
